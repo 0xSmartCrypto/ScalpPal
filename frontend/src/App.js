@@ -27,6 +27,8 @@ const terra = new LCDClient({
   x calculate profit
   x recommend swap only if price is favorable
   x UI
+  - check LUNA / UST balance
+  - enable text input of balance (50% or 100%)
   - vercel deployment
  */
 function App() {
@@ -37,8 +39,8 @@ function App() {
   const [updating, setUpdating] = useState(false);
   // const [resetValue, setResetValue] = useState(0);
   // const [swapRate, setSwapRate] = useState(null);
-  const [priceLuna, setPriceLuna] = useState(null);
-  const [price1mAgo, setPrice1mAgo] = useState(null);
+  const [currentPriceLuna, setCurrentPriceLuna] = useState(null);
+  const [previousPriceLuna, setPreviousPriceLuna] = useState(null);
   // const [swapStr, setSwapStr] = useState('');
   const [profit, setProfit] = useState(0.00);
   const [totalLunaBalance, setTotalLunaBalance] = useState(0);
@@ -80,31 +82,31 @@ function App() {
     const result = await terra.market.swapRate(new Coin('uluna', 10000), 'uusd');
     const newPriceLuna = result.amount.d[0] / 10000;
     console.log('LUNA price', newPriceLuna, 'UST');
-    setPriceLuna(newPriceLuna);
+    setCurrentPriceLuna(newPriceLuna);
   };
 
   // Update profit
   const updateBalances = async () => {
     // Only after 1m
-    if (price1mAgo > 0) {
+    if (previousPriceLuna > 0) {
       // console.log('Updating balances');
-      if (priceLuna > price1mAgo) {
+      if (currentPriceLuna > previousPriceLuna) {
         if (totalLunaBalance > 0) {
           // Record a swap to UST
           // console.log('Swapping full LUNA balance to UST');
-          setTotalUstBalance(totalLunaBalance * priceLuna);
+          setTotalUstBalance(totalLunaBalance * currentPriceLuna);
           setTotalLunaBalance(0);
         }
-      } else if (priceLuna < price1mAgo) {
+      } else if (currentPriceLuna < previousPriceLuna) {
         if (totalUstBalance > 0) {
           // Record a swap to LUNA
           // console.log('Swapping full UST balance to LUNA');
-          setTotalLunaBalance(totalUstBalance / priceLuna);
+          setTotalLunaBalance(totalUstBalance / currentPriceLuna);
           setTotalUstBalance(0);
         }
       }
-      setTotalWorth(totalLunaBalance * priceLuna + totalUstBalance);
-      setProfit(totalLunaBalance * priceLuna + totalUstBalance - INITIAL_BALANCE);
+      setTotalWorth(totalLunaBalance * currentPriceLuna + totalUstBalance);
+      setProfit(totalLunaBalance * currentPriceLuna + totalUstBalance - INITIAL_BALANCE);
     }
   };
 
@@ -116,7 +118,7 @@ function App() {
 
   // Get the price of LUNA:UST every x seconds
   useInterval(async () => {
-    setPrice1mAgo(priceLuna);
+    setPreviousPriceLuna(currentPriceLuna);
     console.log('Get the updated price of LUNA every %ss', INTERVAL_IN_MS / 1000);
     await refreshLunaPrice();
     await updateBalances();
@@ -127,7 +129,7 @@ function App() {
     setUpdating(true);
     let swap;
     let memo;
-    if (priceLuna > price1mAgo) {
+    if (currentPriceLuna > previousPriceLuna) {
       // swap luna to ust
       swap = new MsgSwap(
         connectedWallet.walletAddress,
@@ -135,7 +137,7 @@ function App() {
         'uusd',
       );
       memo = 'Swap luna to ust now!';
-    } else if (priceLuna < price1mAgo) {
+    } else if (currentPriceLuna < previousPriceLuna) {
       // swap ust to luna
       swap = new MsgSwap(
         connectedWallet.walletAddress,
@@ -181,21 +183,21 @@ function App() {
               {' '}
               <span className="bolder">
                 $
-                {priceLuna}
+                {currentPriceLuna}
                 {' '}
               </span>
               UST now.
             </h2>
             {
-              price1mAgo
-              && price1mAgo > 0.0
+              previousPriceLuna
+              && previousPriceLuna > 0.0
               && (
                 <h3>
                   It was
                   {' '}
                   <span className="bolder">
                     $
-                    {price1mAgo}
+                    {previousPriceLuna}
                   </span>
                   {' '}
                   UST a minute ago.
@@ -205,10 +207,10 @@ function App() {
           </div>
           <div>
             {
-              price1mAgo !== null
+              previousPriceLuna !== null
             && (
-              (priceLuna > price1mAgo && totalLunaBalance > 0)
-              || (priceLuna < price1mAgo && totalUstBalance > 0)
+              (currentPriceLuna > previousPriceLuna && totalLunaBalance > 0)
+              || (currentPriceLuna < previousPriceLuna && totalUstBalance > 0)
             )
             && (
               <>
@@ -227,16 +229,17 @@ function App() {
                 <button type="button" className="swap" onClick={onClickSwap}>
                   Swap
                   {' '}
-                  {(priceLuna > price1mAgo && totalLunaBalance > 0) ? GETUST : GETLUNA}
+                  {(currentPriceLuna > previousPriceLuna && totalLunaBalance > 0)
+                    ? GETUST : GETLUNA}
                 </button>
               </>
             )
             }
             {
-              price1mAgo !== null
+              previousPriceLuna !== null
             && (
-              (priceLuna > price1mAgo && totalUstBalance > 0)
-            || (priceLuna < price1mAgo && totalLunaBalance > 0)
+              (currentPriceLuna > previousPriceLuna && totalUstBalance > 0)
+            || (currentPriceLuna < previousPriceLuna && totalLunaBalance > 0)
             )
           && (
             <>
