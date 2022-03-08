@@ -15,7 +15,7 @@
 
 .App-header {
   background-color: #282c34;
-  min-height: 30vh;
+  min-height: 10vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -37,8 +37,61 @@
   }
 }
 
-button.swap {
-  padding: 10px 30px;
+button {
+  cursor: pointer;
+  background-color: #000;
+  color: #fff;
+  border: none;
   font-weight: bold;
-  background-color: #f3e528;
+  font-family: inherit;
+  padding: 1.2rem 2rem;
+  text-transform: uppercase;
+  border-radius: 3rem;
+  font-size: 1.2rem;
+}
+
+button:hover {
+  background-color: #121212;
+}
+
+button:focus {
+  background-color: #222;
+}
+
+button:disabled {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+button.walletButton {
+  padding: 1rem;
+  font-size: 1rem;
+}
+
+span.bolder {
+  font-weight: bolder;
+  color:rgb(6, 132, 235);
+}
+.goodNews {
+  color: whitesmoke;
+  background-color: green;
+  padding: 20px;
+}
+.badNews {
+  color: aliceblue;
+  background-color: rosybrown;
+  padding: 20px;
+}
+.walletSection {
+  padding: 1rem 0;
+}
+
+div.explainer {
+  padding: 0 6rem;
+}
+p.explainer {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 1rem;
 }

@@ -6,12 +6,13 @@ module.exports = {
   extends: [
     'plugin:react/recommended',
     'airbnb',
+    'plugin:react/jsx-runtime',
   ],
   parserOptions: {
     ecmaFeatures: {
       jsx: true,
     },
-    ecmaVersion: 'latest',
+    ecmaVersion: 12,
     sourceType: 'module',
   },
   plugins: [
@@ -22,6 +23,7 @@ module.exports = {
     semi: ['error', 'always'],
     indent: ['error', 2],
     'no-multi-spaces': ['error'],
-    'react/jsx-filename-extension': ['disabled'],
+    'no-unused-vars': 'warn',
+    'react/jsx-filename-extension': [0, { extensions: ['.js', '.jsx'] }],
   },
 };

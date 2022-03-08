@@ -1,6 +1,7 @@
-import { useWallet, WalletStatus } from '@terra-dev/use-wallet'
+/* eslint-disable import/no-extraneous-dependencies */
+import { useWallet, WalletStatus } from '@terra-dev/use-wallet';
 
-export const ConnectWallet = () => {
+function ConnectWallet() {
   const {
     status,
     availableConnectTypes,
@@ -8,19 +9,23 @@ export const ConnectWallet = () => {
     connect,
     install,
     disconnect,
-  } = useWallet()
+  } = useWallet();
 
   return (
-    <div>
+    <div className="walletSection">
       {status === WalletStatus.WALLET_NOT_CONNECTED && (
         <>
+          <p>Connect your wallet to use this app</p>
           {availableInstallTypes.map((connectType) => (
             <button
               key={`install-${connectType}`}
               onClick={() => install(connectType)}
               type="button"
+              className="walletButton"
             >
-              Install {connectType}
+              Install
+              {' '}
+              {connectType}
             </button>
           ))}
           {availableConnectTypes.map((connectType) => (
@@ -28,17 +33,22 @@ export const ConnectWallet = () => {
               key={`connect-${connectType}`}
               onClick={() => connect(connectType)}
               type="button"
+              className="walletButton"
             >
-              Connect {connectType}
+              Connect
+              {' '}
+              {connectType}
             </button>
           ))}
         </>
       )}
       {status === WalletStatus.WALLET_CONNECTED && (
-        <button onClick={() => disconnect()} type="button">
+        <button onClick={() => disconnect()} type="button" className="walletButton">
           Disconnect
         </button>
       )}
     </div>
-  )
+  );
 }
+
+export default ConnectWallet;

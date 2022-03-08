@@ -1,3 +1,7 @@
+/* eslint-disable import/prefer-default-export */
+
 // sync-ed from root via `tr sync-refs`
-import config from "../refs.terrain.json"
-export const contractAdress = (wallet) => config[wallet.network.name].counter.contractAddresses.default
+import config from '../refs.terrain.json';
+
+export const contractAdress = (wallet) => config[wallet.network.name]
+  .counter.contractAddresses.default;
