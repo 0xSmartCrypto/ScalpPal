@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   useWallet,
   useConnectedWallet,
+  UserDenied,
   // WalletStatus,
 } from '@terra-money/wallet-provider';
 
@@ -15,9 +16,17 @@ import ConnectWallet from './components/ConnectWallet';
 
 import useInterval from './hooks/useInterval';
 
+// const terra = new LCDClient({
+//   URL: 'https://lcd.terra.dev',
+//   chainID: 'columbus-5',
+// });
+// const terra = new LCDClient({
+//   URL: 'https://bombay-lcd.terra.dev',
+//   chainID: 'bombay-12',
+// });
 const terra = new LCDClient({
-  URL: 'https://lcd.terra.dev',
-  chainID: 'columbus-5',
+  URL: 'http://localhost:1317',
+  chainID: 'localterra',
 });
 
 /* @dev: do something
@@ -27,8 +36,10 @@ const terra = new LCDClient({
   x calculate profit
   x recommend swap only if price is favorable
   x UI
-  - check LUNA / UST balance
-  - enable text input of balance (50% or 100%)
+  x check LUNA / UST balance in wallet
+  x enable text input of balance (25, 50% or 100%)
+  - swap for real with text input of balance
+  - simulate with real user balance
   - vercel deployment
  */
 function App() {
@@ -42,10 +53,14 @@ function App() {
   const [currentPriceLuna, setCurrentPriceLuna] = useState(null);
   const [previousPriceLuna, setPreviousPriceLuna] = useState(null);
   // const [swapStr, setSwapStr] = useState('');
+  // simulated values
   const [profit, setProfit] = useState(0.00);
   const [totalLunaBalance, setTotalLunaBalance] = useState(0);
   const [totalUstBalance, setTotalUstBalance] = useState(INITIAL_BALANCE);
   const [totalWorth, setTotalWorth] = useState(INITIAL_BALANCE);
+  // actual user wallet balances
+  const [userTotalLunaBalance, setUserTotalLunaBalance] = useState(0);
+  const [userTotalUstBalance, setUserTotalUstBalance] = useState(0);
 
   const { status } = useWallet();
 
@@ -79,15 +94,15 @@ function App() {
   // }, []);
 
   const refreshLunaPrice = async () => {
-    const result = await terra.market.swapRate(new Coin('uluna', 10000), 'uusd');
-    const newPriceLuna = result.amount.d[0] / 10000;
+    const result = await terra.market.swapRate(new Coin('uluna', 1000), 'uusd');
+    const newPriceLuna = result.amount.d[0] / 1000;
     console.log('LUNA price', newPriceLuna, 'UST');
     setCurrentPriceLuna(newPriceLuna);
   };
 
   // Update profit
   const updateBalances = async () => {
-    // Only after 1m
+    // Only after INTERVAL_IN_MS
     if (previousPriceLuna > 0) {
       // console.log('Updating balances');
       if (currentPriceLuna > previousPriceLuna) {
@@ -110,9 +125,26 @@ function App() {
     }
   };
 
+  // Get the balance of LUNA and UST in connectedWallet
+  const updateUserBalances = async () => {
+    if (connectedWallet) {
+      const result = await terra.bank.balance(connectedWallet.walletAddress);
+      const [coins] = result;
+      if (coins.get('uusd')) {
+        setUserTotalUstBalance(coins.get('uusd').toAmino().amount / 1000000);
+      }
+      if (coins.get('uluna')) {
+        setUserTotalLunaBalance(coins.get('uluna').toAmino().amount / 1000000);
+      }
+    }
+  };
+
+  useEffect(async () => {
+    await updateUserBalances();
+  }, [connectedWallet]);
+
   // Get price of LUNA:UST on load
   useEffect(async () => {
-    console.log('Getting initial price of LUNA');
     refreshLunaPrice();
   }, []);
 
@@ -122,74 +154,150 @@ function App() {
     console.log('Get the updated price of LUNA every %ss', INTERVAL_IN_MS / 1000);
     await refreshLunaPrice();
     await updateBalances();
+    await updateUserBalances();
   }, INTERVAL_IN_MS);
 
-  const onClickSwap = async () => {
-    console.log('swapping');
+  const onClickSwapUstToLuna = async () => {
+    console.log('swapping ust to luna');
     setUpdating(true);
     let swap;
     let memo;
+    const toSwap = document.getElementById('toSwap').value;
+    console.log(toSwap);
+
+    if (currentPriceLuna < previousPriceLuna) {
+      // swap ust to luna
+      swap = new MsgSwap(
+        connectedWallet.walletAddress,
+        new Coin('uusd', toSwap * 1000000),
+        'uluna',
+      );
+      memo = `ScalpPal swapping ${toSwap} UST to LUNA!`;
+
+      const tx = await connectedWallet.sign({
+        msgs: [swap],
+        memo,
+      });
+
+      const result = await connectedWallet.post(tx)
+        .catch((err) => {
+          if (err instanceof UserDenied) {
+            console.log('User denied transaction');
+          } else {
+            console.error(err);
+          }
+        });
+      console.log('swap result', result);
+    }
+
+    if (document.getElementById('toSwap')) {
+      document.getElementById('toSwap').value = '';
+    }
+    setUpdating(false);
+  };
+
+  const onClickSwapLunaToUst = async () => {
+    console.log('swapping luna to ust');
+    setUpdating(true);
+    let swap;
+    let memo;
+    const toSwap = document.getElementById('toSwap').value;
+    console.log(toSwap);
+
     if (currentPriceLuna > previousPriceLuna) {
       // swap luna to ust
       swap = new MsgSwap(
         connectedWallet.walletAddress,
-        new Coin('uluna', 1000000),
+        new Coin('uluna', toSwap * 1000000),
         'uusd',
       );
-      memo = 'Swap luna to ust now!';
-    } else if (currentPriceLuna < previousPriceLuna) {
-      // swap ust to luna
-      swap = new MsgSwap(
-        connectedWallet.walletAddress,
-        new Coin('uusd', 10000000000),
-        'uluna',
-      );
-      memo = 'Swap ust to luna now!';
-    }
+      memo = `ScalpPal swapping ${toSwap} LUNA to UST!`;
 
-    const tx = await connectedWallet.sign({
-      msgs: [swap],
-      memo,
-    });
-
-    const result = await connectedWallet.post(tx)
-      .catch((err) => {
-        console.error(err);
+      const tx = await connectedWallet.sign({
+        msgs: [swap],
+        memo,
       });
 
-    console.log('swap result', result);
+      const result = await connectedWallet.post(tx)
+        .catch((err) => {
+          if (err instanceof UserDenied) {
+            console.log('User denied transaction');
+          } else {
+            console.error(err);
+          }
+        });
+      console.log('swap result', result);
+    }
+
+    if (document.getElementById('toSwap')) {
+      document.getElementById('toSwap').value = '';
+    }
     setUpdating(false);
   };
+
+  const onChangeLunaToSwap = (e) => {
+    console.log('onChangeLunaBalance', e.target.value);
+  };
+
+  const onChangeUstToSwap = (e) => {
+    console.log('onChangeUstBalance', e.target.value);
+  };
+
+  // const amountInMillion = (amount) => amount / 1000000;
+  // const amountInBillion = (amount) => amount / 1000000000;
 
   return (
     <div className="App">
       <header className="App-header">
         <div className="explainer">
-          <h3>Terra &quot;ScalpBuddy&quot;</h3>
+          <h3>ScalpPal</h3>
           <p className="explainer">
-            Every minute, ScalpBuddy checks the prices of
-            LUNA:UST and recommends you to swap the balance
-            of LUNA and UST if you can take advantage of
+            Every
+            {' '}
+            { INTERVAL_IN_MS / 1000 }
+            {' '}
+            seconds, ScalpPal checks the price of
+            LUNA (in UST) and recommends you to swap between
+            LUNA and UST to take advantage of
             price differences.
           </p>
         </div>
         <ConnectWallet />
       </header>
-      {status !== 'WALLET_NOT_CONNECTED' && (
-        <>
-          <div>
-            <h2>
-              Price of LUNA is
-              {' '}
-              <span className="bolder">
-                $
-                {currentPriceLuna}
+      <div>
+        {status !== 'WALLET_NOT_CONNECTED' && (
+          <>
+            <div>
+              <div>
+                <p>
+                  You hold
+                  {' '}
+                  <span className="bolder">
+                    {(userTotalLunaBalance).toFixed(2)}
+                  </span>
+                  {' '}
+                  LUNA and
+                  {' '}
+                  <span className="bolder">
+                    $
+                    {(userTotalUstBalance).toFixed(2)}
+                  </span>
+                  {' '}
+                  UST in your wallet.
+                </p>
+              </div>
+              <h2>
+                Price of LUNA is
                 {' '}
-              </span>
-              UST now.
-            </h2>
-            {
-              previousPriceLuna
+                <span className="bolder">
+                  $
+                  {currentPriceLuna}
+                  {' '}
+                </span>
+                UST now.
+              </h2>
+              {
+                previousPriceLuna
               && previousPriceLuna > 0.0
               && (
                 <h3>
@@ -200,120 +308,213 @@ function App() {
                     {previousPriceLuna}
                   </span>
                   {' '}
-                  UST a minute ago.
+                  UST
+                  {' '}
+                  <span className="bolder">
+                    {INTERVAL_IN_MS / 1000}
+                    {' '}
+                    seconds
+                  </span>
+                  {' '}
+                  ago.
                 </h3>
               )
-            }
-          </div>
-          <div>
-            {
-              previousPriceLuna !== null
-            && (
-              (currentPriceLuna > previousPriceLuna && totalLunaBalance > 0)
-              || (currentPriceLuna < previousPriceLuna && totalUstBalance > 0)
-            )
-            && (
-              <>
-                <h3 className="goodNews">Price is favorable!</h3>
-                <p>
-                  You&apos;re holding
-                  {' '}
-                  {totalLunaBalance.toFixed(3)}
-                  {' '}
-                  LUNA and
-                  {' '}
-                  {totalUstBalance.toFixed(3)}
-                  {' '}
-                  UST
-                </p>
-                <button type="button" className="swap" onClick={onClickSwap}>
-                  Swap
-                  {' '}
-                  {(currentPriceLuna > previousPriceLuna && totalLunaBalance > 0)
-                    ? GETUST : GETLUNA}
-                </button>
-              </>
-            )
-            }
-            {
-              previousPriceLuna !== null
-            && (
-              (currentPriceLuna > previousPriceLuna && totalUstBalance > 0)
-            || (currentPriceLuna < previousPriceLuna && totalLunaBalance > 0)
-            )
-          && (
-            <>
+              }
+            </div>
+            <div>
               <p>
                 You&apos;re holding
                 {' '}
-                {totalLunaBalance.toFixed(3)}
+                {totalLunaBalance.toFixed(2)}
                 {' '}
                 LUNA and
                 {' '}
-                {totalUstBalance.toFixed(3)}
+                {totalUstBalance.toFixed(2)}
                 {' '}
                 UST
               </p>
-              <h3 className="badNews">Sit tight. Price is not favorable!</h3>
-            </>
+            </div>
+            <div>
+              { previousPriceLuna !== null
+            && (currentPriceLuna > previousPriceLuna && totalLunaBalance > 0)
+            && (
+              <>
+                <h3 className="goodNews">Price is favorable!</h3>
+                <div className="textInput">
+                  <span className="textInput">
+                    <a
+                      className="quickLink"
+                      href="#25pc"
+                      id="25pc"
+                      onClick={() => {
+                        document.getElementById('toSwap').value = (userTotalLunaBalance * 0.25).toFixed(2);
+                      }}
+                    >
+                      25%
+                    </a>
+                    <a
+                      className="quickLink"
+                      href="#50pc"
+                      id="50pc"
+                      onClick={() => {
+                        document.getElementById('toSwap').value = (userTotalLunaBalance * 0.5).toFixed(2);
+                      }}
+                    >
+                      50%
+                    </a>
+                    <a
+                      className="quickLink"
+                      href="#100pc"
+                      id="100pc"
+                      onClick={() => {
+                        document.getElementById('toSwap').value = (userTotalLunaBalance).toFixed(2);
+                      }}
+                    >
+                      100%
+                    </a>
+                  </span>
+                  <input
+                    type="input"
+                    id="toSwap"
+                    className="textInput"
+                    onChange={onChangeLunaToSwap}
+                  />
+                </div>
+                <button type="button" className="swap" onClick={onClickSwapLunaToUst}>
+                  Swap
+                  {' '}
+                  {GETUST}
+                </button>
+              </>
+            )}
+            </div>
+
+            <div>
+              { previousPriceLuna !== null
+            && (currentPriceLuna < previousPriceLuna && totalUstBalance > 0)
+            && (
+              <>
+                <h3 className="goodNews">Price is favorable!</h3>
+                <div className="textInput">
+                  <span className="textInput">
+                    <a
+                      className="quickLink"
+                      href="#25pc"
+                      id="25pc"
+                      onClick={() => {
+                        document.getElementById('toSwap').value = (userTotalLunaBalance * 0.25).toFixed(2);
+                      }}
+                    >
+                      25%
+                    </a>
+                    <a
+                      className="quickLink"
+                      href="#50pc"
+                      id="50pc"
+                      onClick={() => {
+                        document.getElementById('toSwap').value = (userTotalLunaBalance * 0.5).toFixed(2);
+                      }}
+                    >
+                      50%
+                    </a>
+                    <a
+                      className="quickLink"
+                      href="#100pc"
+                      id="100pc"
+                      onClick={() => {
+                        document.getElementById('toSwap').value = (userTotalLunaBalance).toFixed(2);
+                      }}
+                    >
+                      100%
+                    </a>
+                  </span>
+                  <input
+                    type="input"
+                    id="toSwap"
+                    className="textInput"
+                    onChange={onChangeUstToSwap}
+                  />
+                </div>
+                <button type="button" className="swap" onClick={onClickSwapUstToLuna}>
+                  Swap
+                  {' '}
+                  {GETLUNA}
+                </button>
+              </>
+            )}
+            </div>
+
+            <div>
+              {
+                previousPriceLuna !== null
+            && (
+              (currentPriceLuna >= previousPriceLuna && totalUstBalance > 0)
+            || (currentPriceLuna <= previousPriceLuna && totalLunaBalance > 0)
+            )
+          && (
+            <h3 className="badNews">Sit tight. Price is not favorable!</h3>
           )
-            }
-          </div>
-          <div id="updating">
-            {updating && <div>Updating...</div>}
-          </div>
-          <div>
-            {
-              totalWorth > 0 && (
-                <>
-                  <hr />
-                  <p>
-                    Since being on this page, had you started with $10,000 and
-                    made every recommended swap with your full balance, you
-                    would&rsquo;ve made
-                  </p>
-                  <p>
-                    {' '}
-                    <span className="bolder">
-                      $
-                      {profit.toFixed(3)}
-                    </span>
-                    {' '}
-                    in profit, with total balance of
-                    {' '}
-                    <span className="bolder">{totalLunaBalance.toFixed(3)}</span>
-                    {' '}
-                    LUNA and
-                    {' '}
-                    <span className="bolder">{totalUstBalance.toFixed(3)}</span>
-                    {' '}
-                    UST, and a total worth of
-                    {' '}
-                    <span className="bolder">
-                      $
-                      {totalWorth.toFixed(3)}
-                    </span>
-                    !
-                  </p>
-                  <p>
-                    Please wait up to
-                    {' '}
-                    <span className="bolder">
-                      {INTERVAL_IN_MS / 1000}
-                      {' '}
-                      seconds
+              }
+            </div>
 
-                    </span>
-                    {' '}
-                    for the next update.
-                  </p>
-                </>
-              )
-            }
-          </div>
-        </>
-      )}
+            <div id="updating">
+              {updating && <div>Updating...</div>}
+            </div>
 
+            <hr />
+
+            <div className="explainer">
+              <p>
+                Since loading this page, had you put your entire balance of
+                {' '}
+                <span className="bolder">
+                  $10000
+                  {' '}
+                  UST
+                </span>
+                {' '}
+                to work and made every recommended swap, you
+                would&rsquo;ve made
+
+                {' '}
+                <span className="bolder">
+                  $
+                  {profit.toFixed(3)}
+                </span>
+                {' '}
+                in profit, with a total balance of
+                {' '}
+                <span className="bolder">{totalLunaBalance.toFixed(2)}</span>
+                {' '}
+                LUNA and
+                {' '}
+                <span className="bolder">{totalUstBalance.toFixed(2)}</span>
+                {' '}
+                UST, for a total worth of
+                {' '}
+                <span className="bolder">
+                  $
+                  {totalWorth.toFixed(2)}
+                </span>
+                !
+              </p>
+              <p>
+                Please wait up to
+                {' '}
+                <span className="bolder">
+                  {INTERVAL_IN_MS / 1000}
+                  {' '}
+                  seconds
+
+                </span>
+                {' '}
+                for the next update.
+              </p>
+            </div>
+
+          </>
+        )}
+      </div>
     </div>
   );
 }

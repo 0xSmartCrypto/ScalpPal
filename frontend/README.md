@@ -1,3 +1,39 @@
+# ScalpPal
+
+Every 10 seconds, ScalpPal checks the price of LUNA (in UST) and recommends you to swap between LUNA and UST to take advantage of price differences.
+
+# Stack
+
+This project is built on [Terrain](https://docs.terra.money/docs/develop/dapp/quick-start/using-terrain-localterra.html). Its scaffolding and cli are used as the basis of this project.
+
+You should also set up [Terra Station Wallet](https://chrome.google.com/webstore/detail/terra-station-wallet/aiifbnbfobpmeekipheeijimdpnlpgpp) and change to the Local network.
+# Installation
+
+1. Clone this repository
+2. Set up [Terrain](https://docs.terra.money/docs/develop/dapp/quick-start/using-terrain-localterra.html)
+3. In the frontend app, run `npm install`
+
+# Running in local environment
+
+1. Make sure LocalTerra is running
+2. Run the `/frontend` app by running `npm start`
+
+# Work in progress
+
+- [x] get the price of LUNA 5 mins ago
+- [x] if current price > price 5 mins ago, swap LUNA to UST
+- [x] else swap UST to LUNA
+- [x] calculate profit
+- [x] recommend swap only if price is favorable
+- [x] UI
+- [x] check LUNA / UST balance in wallet
+- [x] enable text input of balance (25, 50% or 100%)
+- [ ] swap for real with text input of balance
+- [ ] simulate with real user balance
+- [ ] vercel deployment
+
+Below you can find the standard documentation for Create React App.
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
