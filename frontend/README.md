@@ -1,6 +1,6 @@
 # ScalpPal
 
-Every 10 seconds, ScalpPal checks the price of LUNA (in UST) and recommends you to swap between LUNA and UST to take advantage of price differences.
+Every 30 seconds, ScalpPal checks the price of LUNA (in UST) and recommends you to swap between LUNA and UST to take advantage of price differences.
 
 # Stack
 
@@ -20,8 +20,8 @@ You should also set up [Terra Station Wallet](https://chrome.google.com/webstore
 
 # Work in progress
 
-- [x] get the price of LUNA 5 mins ago
-- [x] if current price > price 5 mins ago, swap LUNA to UST
+- [x] get the price of LUNA 30s ago
+- [x] if current price > price 30s ago, swap LUNA to UST
 - [x] else swap UST to LUNA
 - [x] calculate profit
 - [x] recommend swap only if price is favorable
