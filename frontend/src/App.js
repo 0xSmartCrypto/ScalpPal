@@ -174,12 +174,15 @@ function App() {
       );
       memo = `ScalpPal swapping ${toSwap} UST to LUNA!`;
 
-      const tx = await connectedWallet.sign({
+      // const tx = await connectedWallet.sign({
+      //   msgs: [swap],
+      //   memo,
+      // });
+
+      const result = await connectedWallet.post({
         msgs: [swap],
         memo,
-      });
-
-      const result = await connectedWallet.post(tx)
+      })
         .catch((err) => {
           if (err instanceof UserDenied) {
             console.log('User denied transaction');
@@ -213,12 +216,15 @@ function App() {
       );
       memo = `ScalpPal swapping ${toSwap} LUNA to UST!`;
 
-      const tx = await connectedWallet.sign({
+      // const tx = await connectedWallet.sign({
+      //   msgs: [swap],
+      //   memo,
+      // });
+
+      const result = await connectedWallet.post({
         msgs: [swap],
         memo,
-      });
-
-      const result = await connectedWallet.post(tx)
+      })
         .catch((err) => {
           if (err instanceof UserDenied) {
             console.log('User denied transaction');
