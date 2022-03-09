@@ -28,7 +28,7 @@ You should also set up [Terra Station Wallet](https://chrome.google.com/webstore
 - [x] UI
 - [x] check LUNA / UST balance in wallet
 - [x] enable text input of balance (25, 50% or 100%)
-- [ ] swap for real with text input of balance
+- [x] swap for real with text input of balance
 - [ ] simulate with real user balance
 - [ ] vercel deployment
 
